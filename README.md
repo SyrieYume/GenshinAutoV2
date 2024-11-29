@@ -4,7 +4,7 @@
 ## 使用方法
 1. 从 [Release](https://github.com/SyrieYume/GenshinAutoV2/releases/latest) 下载最新版的 `GenshinAutoV2.exe`
 2. 双击运行 `GenshinAutoV2.exe`
-3. 当原神进入剧情对话时，可以自动点击对话，原神窗口可以切到后台（窗口不能最小化）
+3. 当原神进入剧情对话时，会自动点击对话，原神窗口可以切到后台（窗口不能最小化）
 4. 按 `Ctrl + p` 可以暂停自动点对话
 
 ## 注意事项
