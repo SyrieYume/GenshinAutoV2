@@ -10,18 +10,25 @@ typedef struct {
 
 // 1920 x 1080 分辨率下的像素点坐标
 Point2D points[] = {
-    { 283, 49 },  // 隐藏对话按钮的白色部分
-    { 290, 49 },  // 隐藏对话按钮的黑色部分 
+    { 290, 37 },  // 隐藏对话按钮的白色部分
+    { 289, 48 },  // 隐藏对话按钮的黑色部分 
+    { 279, 28 },  // 隐藏对话按钮左上角
+    { 319, 68 }   // 隐藏对话按钮右下角
 };
 
 
 
 // 根据实际的分辨率大小调整上面的像素点坐标
 void initPoints(SIZE wndSize) {
-    double scale = wndSize.cx / 1920.0;
+    double scale;
+    if((wndSize.cx * 9) > (wndSize.cy * 16))
+        scale = wndSize.cy / 1080.0;
+    else
+        scale = wndSize.cx / 1920.0;
+
     int offset_y = wndSize.cy - 1080 * scale;
 
-    for(int i = 0; i < 2; i++) {
+    for(int i = 0; i < sizeof(points) / sizeof(points[0]); i++) {
         points[i].x = round(points[i].x * scale);
         points[i].y = round(points[i].y * scale);
     }
@@ -62,7 +69,6 @@ int main() {
 
     Con_Info(ANSI_BLUE("Hwnd") " = 0x%llx", hwnd);
     Con_Info(ANSI_BLUE("窗口大小") ": %d" ANSI_BLUE(" X ") "%d", wndSize.cx, wndSize.cy);
-
 
     initPoints(wndSize);
 
