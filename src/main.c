@@ -4,73 +4,151 @@
 #include "win.utils.h"
 #include "console.utils.h"
 
+#define MAX_POINTS 2
+
 typedef struct {
-    int x, y; 
+    int x, y;
 } Point2D;
 
+typedef struct {
+    Point2D point;
+    const char *description;
+} LabeledPoint;
+
 // 1920 x 1080 分辨率下的像素点坐标
-Point2D points[] = {
-    { 290, 37 },  // 隐藏对话按钮的白色部分
-    { 289, 48 },  // 隐藏对话按钮的黑色部分 
-    { 279, 28 },  // 隐藏对话按钮左上角
-    { 319, 68 }   // 隐藏对话按钮右下角
+LabeledPoint points[] = {
+    {{290, 37}, "隐藏对话按钮的白色部分"},
+    {{289, 48}, "隐藏对话按钮的黑色部分"},
+    // {{279, 28}, "隐藏对话按钮左上角"},
+    // {{319, 68}, "隐藏对话按钮右下角"}
 };
 
+int point_count = sizeof(points) / sizeof(points[0]);
 
+int load_points_from_args(const int argc, char *argv[], Point2D *out_points, const int max_points) {
+    for (int i = 1; i < argc; ++i) {
+        if (strcmp(argv[i], "--points") == 0 && i + 1 < argc) {
+            int j = 0;
+            for (int k = i + 1; k < argc && j < max_points; ++k) {
+                int x, y;
+                if (sscanf(argv[k], "%d,%d", &x, &y) == 2) {
+                    out_points[j++] = (Point2D){x, y};
+                } else {
+                    break;
+                }
+            }
+            return j;
+        }
+    }
+    return 0;
+}
+
+int load_points_from_file(Point2D *out_points, const int max_points) {
+    char path[MAX_PATH];
+    const char *home = getenv("USERPROFILE");
+    if (!home) return 0;
+
+    snprintf(path, MAX_PATH, "%s\\.genshin_points.conf", home);
+
+    FILE *fp = fopen(path, "r");
+    if (!fp) return 0;
+
+    int i = 0;
+    while (i < max_points && fscanf(fp, "%d %d", &out_points[i].x, &out_points[i].y) == 2) {
+        i++;
+    }
+    fclose(fp);
+    return i;
+}
+
+// 返回值：1 表示使用默认点（需要缩放和偏移），0 表示从外部读取点（无需调整）
+int initialize_points(const int argc, char *argv[]) {
+    Point2D temp_points[MAX_POINTS];
+    int count = load_points_from_args(argc, argv, temp_points, MAX_POINTS);
+
+    if (count == 0) {
+        count = load_points_from_file(temp_points, MAX_POINTS);
+    }
+
+    if (count > 0) {
+        for (int i = 0; i < count; i++) {
+            points[i].point.x = temp_points[i].x;
+            points[i].point.y = temp_points[i].y;
+        }
+        point_count = count;
+        printf("已加载 %d 个点（来自参数或配置）。\n", point_count);
+        return 0;
+    } else {
+        printf("使用默认点坐标, 1080P下全屏为基准。\n");
+        return 1;
+    }
+}
 
 // 根据实际的分辨率大小调整上面的像素点坐标
-void initPoints(SIZE wndSize) {
+void initPoints(const SIZE wndSize) {
     double scale;
-    if((wndSize.cx * 9) > (wndSize.cy * 16))
+    if ((wndSize.cx * 9) > (wndSize.cy * 16))
         scale = wndSize.cy / 1080.0;
     else
         scale = wndSize.cx / 1920.0;
 
-    int offset_y = wndSize.cy - 1080 * scale;
+    // int offset_y = wndSize.cy - 1080 * scale;
+    printf("点位偏移因子: %.4f\n", scale);
 
-    for(int i = 0; i < sizeof(points) / sizeof(points[0]); i++) {
-        points[i].x = round(points[i].x * scale);
-        points[i].y = round(points[i].y * scale);
+    for (int i = 0; i < sizeof(points) / sizeof(points[0]); i++) {
+        points[i].point.x = round(points[i].point.x * scale);
+        points[i].point.y = round(points[i].point.y * scale);
+
+        printf("Scaled point[%d]: (%d, %d) - %s\n",
+               i,
+               points[i].point.x,
+               points[i].point.y,
+               points[i].description);
     }
 }
 
 
-
-int main() {
+int main(const int argc, char *argv[]) {
     DWORD pid;
     HWND hwnd;
     SIZE wndSize;
     HDC hdc;
 
-    if(!Con_Init("GenshinAuto v2", 80, 24))
+    if (!Con_Init("GenshinAuto v2", 80, 24))
         Con_Error("初始化控制台窗口时出错");
 
     Con_Waiting("正在等待原神进程 " ANSI_BLUE("YuanShen.exe") " / " ANSI_BLUE("GenshinImpact.exe"));
 
-    while(!((pid = Win_GetPid("YuanShen.exe")) || (pid = Win_GetPid("GenshinImpact.exe")))) 
+    while (!((pid = Win_GetPid("YuanShen.exe")) || (pid = Win_GetPid("GenshinImpact.exe"))))
         Sleep(200);
 
     printf(ANSI_CLEAN_LINE);
-
-    Con_Info(ANSI_BLUE("Pid") " = %lld", pid);
-
-
+    Con_Info(ANSI_BLUE("Pid") " = %lu", pid);
     Con_Waiting("正在等待原神窗口");
 
     while (TRUE) {
         hwnd = Win_GetHwnd(pid);
         wndSize = Win_GetWndSize(hwnd);
-        if(wndSize.cx > 400) 
+        if (wndSize.cx > 400)
             break;
         Sleep(200);
-    } 
-    
-    printf(ANSI_CLEAN_LINE);
+    }
 
-    Con_Info(ANSI_BLUE("Hwnd") " = 0x%llx", hwnd);
+    printf(ANSI_CLEAN_LINE);
+    Con_Info(ANSI_BLUE("Hwnd") " = 0x%p", hwnd);
     Con_Info(ANSI_BLUE("窗口大小") ": %d" ANSI_BLUE(" X ") "%d", wndSize.cx, wndSize.cy);
 
-    initPoints(wndSize);
+    int need_scale_adjust = initialize_points(argc, argv);
+    for (int i = 0; i < point_count; ++i) {
+        printf("点[%d]: (%d, %d) - %s\n",
+               i,
+               points[i].point.x,
+               points[i].point.y,
+               points[i].description);
+    }
+    if (need_scale_adjust) {
+        initPoints(wndSize);
+    }
 
     Con_Info("开始自动点击剧情中(当检测到进入剧情时会自动点击)...");
     Con_Info("按" ANSI_BLUE("Ctrl+p") "键暂停.");
@@ -78,24 +156,31 @@ int main() {
     hdc = GetDC(hwnd);
 
     BOOL isActivate = TRUE;
-    
+
     // afterDialog：值为0表示正在剧情对话中，值为1表示不在剧情对话中，大于1表示剧情对话刚刚结束（会在几秒内递减到1）
     int afterDialog = 1;
-    
-    while(TRUE) {
+
+    while (TRUE) {
         if (Win_IsKeysDown(VK_CONTROL, 'P')) {
             isActivate = !isActivate;
-            if (isActivate) 
+            if (isActivate)
                 Con_Info("程序继续" ANSI_GREEN("执行") "中");
-            else 
+            else
                 Con_Info("程序" ANSI_ORANGE("暂停") "中");
             Sleep(400);
         }
 
         if (isActivate) {
             // 判断左上角的隐藏对话按钮
-            if (GetPixel(hdc, points[0].x, points[0].y) == RGB(236,229,216) && GetPixel(hdc, points[1].x, points[1].y) == RGB(59, 67, 84)) {
-                if(afterDialog > 0) {
+            const COLORREF LEFT_TOP_COLOR = GetPixel(hdc, points[0].point.x, points[0].point.y);
+            const COLORREF LEFT_TOP_COLOR2 = GetPixel(hdc, points[1].point.x, points[1].point.y);
+            // printf("Point 0 RGB: R=%d G=%d B=%d\n",
+            // GetRValue(color1), GetGValue(color1), GetBValue(color1));
+            // printf("Point 1 RGB: R=%d G=%d B=%d\n",
+            // GetRValue(color2), GetGValue(color2), GetBValue(color2));
+            const int IN_NORMAL = LEFT_TOP_COLOR == RGB(236, 229, 216) && LEFT_TOP_COLOR2 == RGB(59, 67, 84);
+            if (IN_NORMAL || LEFT_TOP_COLOR == RGB(0, 0, 0) && LEFT_TOP_COLOR2 == RGB(0, 0, 0)) {
+                if (afterDialog > 0) {
                     afterDialog = 0;
                     Con_Info("检测到进入剧情对话");
                 }
@@ -104,15 +189,14 @@ int main() {
                 PostMessageW(hwnd, WM_KEYDOWN, 0x46, 0x210001);
                 Sleep(75);
                 PostMessageW(hwnd, WM_KEYUP, 0x46, 0xC0210001);
-            }
-            else if(afterDialog == 0) {
+            } else if (afterDialog == 0) {
                 afterDialog = 16;
                 Con_Info("剧情对话结束");
             }
         }
 
         // 对话结束之后，原神会将鼠标强制锁到窗口中央，这里在剧情对话结束后几秒内解除鼠标锁定
-        if(afterDialog > 1) {
+        if (afterDialog > 1) {
             afterDialog--;
             ClipCursor(NULL);
         }
