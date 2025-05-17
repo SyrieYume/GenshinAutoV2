@@ -109,28 +109,43 @@ void initPoints(const SIZE wndSize) {
 
 
 int main(const int argc, char *argv[]) {
-    DWORD pid;
-    HWND hwnd;
-    SIZE wndSize;
-    HDC hdc;
-
     if (!Con_Init("GenshinAuto v2", 80, 24))
         Con_Error("初始化控制台窗口时出错");
 
+    DWORD pid = 0;
+    HWND hwnd = NULL;
+    SIZE wndSize = {0};
+    HDC hdc = NULL;
+
+wait_process:
+    // 重置变量
+    pid = 0;
+    hwnd = NULL;
+    hdc = NULL;
+
     Con_Waiting("正在等待原神进程 " ANSI_BLUE("YuanShen.exe") " / " ANSI_BLUE("GenshinImpact.exe"));
 
+    // 等待原神进程启动
     while (!((pid = Win_GetPid("YuanShen.exe")) || (pid = Win_GetPid("GenshinImpact.exe"))))
-        Sleep(200);
+        Sleep(2000);
 
     printf(ANSI_CLEAN_LINE);
     Con_Info(ANSI_BLUE("Pid") " = %lu", pid);
     Con_Waiting("正在等待原神窗口");
 
+    // 等待窗口初始化完成
     while (TRUE) {
+        // 检查进程是否仍然存在
+        if (!Win_GetPid("YuanShen.exe") && !Win_GetPid("GenshinImpact.exe")) {
+            Con_Info("进程已关闭，重新等待进程启动");
+            goto wait_process;
+        }
+
         hwnd = Win_GetHwnd(pid);
         wndSize = Win_GetWndSize(hwnd);
         if (wndSize.cx > 400)
             break;
+
         Sleep(200);
     }
 
@@ -138,7 +153,7 @@ int main(const int argc, char *argv[]) {
     Con_Info(ANSI_BLUE("Hwnd") " = 0x%p", hwnd);
     Con_Info(ANSI_BLUE("窗口大小") ": %d" ANSI_BLUE(" X ") "%d", wndSize.cx, wndSize.cy);
 
-    int need_scale_adjust = initialize_points(argc, argv);
+    const int need_scale_adjust = initialize_points(argc, argv);
     for (int i = 0; i < point_count; ++i) {
         printf("点[%d]: (%d, %d) - %s\n",
                i,
@@ -151,7 +166,7 @@ int main(const int argc, char *argv[]) {
     }
 
     Con_Info("开始自动点击剧情中(当检测到进入剧情时会自动点击)...");
-    Con_Info("按" ANSI_BLUE("Ctrl+p") "键暂停.");
+    Con_Info("按" ANSI_BLUE("Ctrl+p") "键暂停，按" ANSI_BLUE("Ctrl+q") "键退出。");
 
     hdc = GetDC(hwnd);
 
@@ -161,6 +176,13 @@ int main(const int argc, char *argv[]) {
     int afterDialog = 1;
 
     while (TRUE) {
+        // 添加退出快捷键
+        if (Win_IsKeysDown(VK_CONTROL, 'Q')) {
+            Con_Info("用户按下退出快捷键，程序退出");
+            ReleaseDC(hwnd, hdc);
+            return 0;
+        }
+
         if (Win_IsKeysDown(VK_CONTROL, 'P')) {
             isActivate = !isActivate;
             if (isActivate)
@@ -168,6 +190,22 @@ int main(const int argc, char *argv[]) {
             else
                 Con_Info("程序" ANSI_ORANGE("暂停") "中");
             Sleep(400);
+        }
+
+        // 检查进程是否仍然存在
+        if (!IsProcessAlive(pid)) {
+            Con_Info("进程已关闭，重新等待进程启动");
+            if (hdc != NULL) {
+                ReleaseDC(hwnd, hdc);
+            }
+
+            // 等待进程退出
+            const HANDLE hProcess = OpenProcess(SYNCHRONIZE, FALSE, pid);
+            if (hProcess != NULL) {
+                WaitForSingleObject(hProcess, INFINITE);
+                CloseHandle(hProcess);
+            }
+            goto wait_process;
         }
 
         if (isActivate) {
@@ -203,8 +241,6 @@ int main(const int argc, char *argv[]) {
 
         Sleep(125);
     }
-
-    ReleaseDC(hwnd, hdc);
 
     return 0;
 }

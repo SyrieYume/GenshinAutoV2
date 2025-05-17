@@ -14,6 +14,7 @@ SIZE Win_GetWndSize(HWND hwnd);
 // 检查多个按键是否按下
 BOOL Win_IsKeysDownEx(const int *vKeys);
 
+BOOL IsProcessAlive(DWORD pid);
 // 检查多个按键是否按下
 #define Win_IsKeysDown(...)  Win_IsKeysDownEx((int[]){ __VA_ARGS__, 0 })
 
