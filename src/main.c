@@ -45,13 +45,24 @@ int load_points_from_args(const int argc, char *argv[], Point2D *out_points, con
 
 int load_points_from_file(Point2D *out_points, const int max_points) {
     char path[MAX_PATH];
-    const char *home = getenv("USERPROFILE");
-    if (!home) return 0;
+    FILE *fp = NULL;
 
-    snprintf(path, MAX_PATH, "%s\\.genshin_points.conf", home);
+    // 1. 尝试打开当前工作目录下的配置文件
+    snprintf(path, MAX_PATH, ".genshin_points.conf");
+    fp = fopen(path, "r");
+    if (fp == NULL) {
+        Con_Info("工作目录下没有.genshin_points.conf, 尝试从HOME目录读取");
+    }
 
-    FILE *fp = fopen(path, "r");
-    if (!fp) return 0;
+    // 2. 如果当前路径没有，再尝试用户目录
+    if (!fp) {
+        const char *home = getenv("USERPROFILE");
+        if (!home) return 0;
+
+        snprintf(path, MAX_PATH, "%s\\.genshin_points.conf", home);
+        fp = fopen(path, "r");
+        if (!fp) return 0;
+    }
 
     int i = 0;
     while (i < max_points && fscanf(fp, "%d %d", &out_points[i].x, &out_points[i].y) == 2) {
@@ -78,10 +89,9 @@ int initialize_points(const int argc, char *argv[]) {
         point_count = count;
         printf("已加载 %d 个点（来自参数或配置）。\n", point_count);
         return 0;
-    } else {
-        printf("使用默认点坐标, 1080P下全屏为基准。\n");
-        return 1;
     }
+    printf("使用默认点坐标, 1080P下全屏为基准。\n");
+    return 1;
 }
 
 // 根据实际的分辨率大小调整上面的像素点坐标
@@ -114,11 +124,10 @@ int main(const int argc, char *argv[]) {
 
     DWORD pid = 0;
     HWND hwnd = NULL;
-    SIZE wndSize = {0};
+    SIZE wndSize;
     HDC hdc = NULL;
 
 wait_process:
-    // 重置变量
     pid = 0;
     hwnd = NULL;
     hdc = NULL;
@@ -241,6 +250,4 @@ wait_process:
 
         Sleep(125);
     }
-
-    return 0;
 }
