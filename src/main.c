@@ -4,7 +4,7 @@
 #include "win.utils.h"
 #include "console.utils.h"
 
-#define MAX_POINTS 2
+#define MAX_POINTS 3
 
 typedef struct {
     int x, y;
@@ -19,7 +19,7 @@ typedef struct {
 LabeledPoint points[] = {
     {{290, 37}, "隐藏对话按钮的白色部分"},
     {{289, 48}, "隐藏对话按钮的黑色部分"},
-    // {{279, 28}, "隐藏对话按钮左上角"},
+    {{1280, 1286}, "中间底部点击后继续橙黄色部分"},
     // {{319, 68}, "隐藏对话按钮右下角"}
 };
 
@@ -117,6 +117,20 @@ void initPoints(const SIZE wndSize) {
     }
 }
 
+BOOL inNormal(const HDC hdc) {
+    const COLORREF LEFT_TOP_COLOR = GetPixel(hdc, points[0].point.x, points[0].point.y);
+    const COLORREF LEFT_TOP_COLOR2 = GetPixel(hdc, points[1].point.x, points[1].point.y);
+    if (LEFT_TOP_COLOR == RGB(236, 229, 216) && LEFT_TOP_COLOR2 == RGB(59, 67, 84)) {
+        return TRUE;
+    }
+    // 黑屏也算
+    return LEFT_TOP_COLOR == RGB(0, 0, 0) && LEFT_TOP_COLOR2 == RGB(0, 0, 0);
+}
+
+BOOL inOthers(const HDC hdc) {
+    const COLORREF COLOR = GetPixel(hdc, points[2].point.x, points[2].point.y);
+    return  COLOR == RGB(255, 195, 0);
+}
 
 int main(const int argc, char *argv[]) {
     if (!Con_Init("GenshinAuto v2", 80, 24))
@@ -219,14 +233,7 @@ wait_process:
 
         if (isActivate) {
             // 判断左上角的隐藏对话按钮
-            const COLORREF LEFT_TOP_COLOR = GetPixel(hdc, points[0].point.x, points[0].point.y);
-            const COLORREF LEFT_TOP_COLOR2 = GetPixel(hdc, points[1].point.x, points[1].point.y);
-            // printf("Point 0 RGB: R=%d G=%d B=%d\n",
-            // GetRValue(color1), GetGValue(color1), GetBValue(color1));
-            // printf("Point 1 RGB: R=%d G=%d B=%d\n",
-            // GetRValue(color2), GetGValue(color2), GetBValue(color2));
-            const int IN_NORMAL = LEFT_TOP_COLOR == RGB(236, 229, 216) && LEFT_TOP_COLOR2 == RGB(59, 67, 84);
-            if (IN_NORMAL || LEFT_TOP_COLOR == RGB(0, 0, 0) && LEFT_TOP_COLOR2 == RGB(0, 0, 0)) {
+            if (inNormal(hdc) || inOthers(hdc)) {
                 if (afterDialog > 0) {
                     afterDialog = 0;
                     Con_Info("检测到进入剧情对话");
