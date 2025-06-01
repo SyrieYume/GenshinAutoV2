@@ -4,7 +4,6 @@
 #include "win.utils.h"
 #include "console.utils.h"
 
-#define MAX_POINTS 3
 
 typedef struct {
     int x, y;
@@ -15,10 +14,20 @@ typedef struct {
     const char *description;
 } LabeledPoint;
 
-// 1920 x 1080 分辨率下的像素点坐标
+// 基准27寸2560x1440分辨率下的点位
+#define BASE_RESOLUTION_WIDTH 2560
+#define BASE_RESOLUTION_HEIGHT 1440
+#define BASE_SCREEN_SIZE 27.0f
+#define MAX_POINTS 3
+Point2D base_points[MAX_POINTS] = {
+    {420, 47}, // 隐藏对话按钮白色部分
+    {418, 63}, // 隐藏对话按钮黑色部分
+    {1280, 1286} // 中间底部继续按钮
+};
+
 LabeledPoint points[] = {
-    {{290, 37}, "隐藏对话按钮的白色部分"},
-    {{289, 48}, "隐藏对话按钮的黑色部分"},
+    {{420, 47}, "隐藏对话按钮的白色部分"},
+    {{418, 63}, "隐藏对话按钮的黑色部分"},
     {{1280, 1286}, "中间底部点击后继续橙黄色部分"},
     // {{319, 68}, "隐藏对话按钮右下角"}
 };
@@ -90,30 +99,44 @@ int initialize_points(const int argc, char *argv[]) {
         printf("已加载 %d 个点（来自参数或配置）。\n", point_count);
         return 0;
     }
-    printf("使用默认点坐标, 1080P下全屏为基准。\n");
     return 1;
 }
 
-// 根据实际的分辨率大小调整上面的像素点坐标
-void initPoints(const SIZE wndSize) {
-    double scale;
-    if ((wndSize.cx * 9) > (wndSize.cy * 16))
-        scale = wndSize.cy / 1080.0;
-    else
-        scale = wndSize.cx / 1920.0;
+// 根据基准点位计算给定分辨率和屏幕尺寸下的点位
+void calculate_points_for_resolution(const SIZE wndSize, const double screenSizeInches) {
+    Con_Info(
+        "计算基于27寸2560x1440分辨率的点位映射, 只作用在16:9如果不生效或是其他比例请在HOME目录下创建.genshin_points.conf自行采点配置(隐藏对话按钮白色部分, 隐藏对话按钮黑色部分, 中间底部继续按钮)");
+    const double scaleX = (double) wndSize.cx / BASE_RESOLUTION_WIDTH;
+    const double scaleY = (double) wndSize.cy / BASE_RESOLUTION_HEIGHT;
+    const double scale = (wndSize.cx * 9 == wndSize.cy * 16) ? scaleX : (scaleX < scaleY ? scaleX : scaleY);
 
-    // int offset_y = wndSize.cy - 1080 * scale;
-    printf("点位偏移因子: %.4f\n", scale);
+    double sizeFactor = .0;
+    if (screenSizeInches > 0) {
+        sizeFactor = screenSizeInches / BASE_SCREEN_SIZE;
+        // 限制尺寸调整因子的影响，通常物理尺寸对点位的影响较小
+        sizeFactor = 1.0f + (sizeFactor - 1.0) * 0.2;
+        printf("屏幕尺寸调整因子: %.3f\n", sizeFactor);
+    }
 
-    for (int i = 0; i < sizeof(points) / sizeof(points[0]); i++) {
-        points[i].point.x = round(points[i].point.x * scale);
-        points[i].point.y = round(points[i].point.y * scale);
+    Con_Info("点位缩放因子: %.4f", scale);
+    for (int i = 0; i < point_count && i < MAX_POINTS; i++) {
+        // 先根据分辨率等比例缩放
+        double scaledX = (double) base_points[i].x * scale;
+        double scaledY = (double) base_points[i].y * scale;
+        // 第三个点位（中间底部继续按钮）的Y坐标可能需要特殊调整
+        if (i == 2 && base_points[i].y > BASE_RESOLUTION_HEIGHT) {
+            // 如果Y坐标大于屏幕高度（比如底部按钮），可能需要特殊处理
+            scaledY = wndSize.cy + (base_points[i].y - BASE_RESOLUTION_HEIGHT) * scale;
+        }
 
-        printf("Scaled point[%d]: (%d, %d) - %s\n",
-               i,
-               points[i].point.x,
-               points[i].point.y,
-               points[i].description);
+        // scaledX *= sizeFactor;
+        // scaledY *= sizeFactor;
+        points[i].point.x = (int) round(scaledX);
+        points[i].point.y = (int) round(scaledY);
+        // Con_Info("计算点位[%d]: (%d, %d) - %s", i,
+        //          points[i].point.x,
+        //          points[i].point.y,
+        //          points[i].description);
     }
 }
 
@@ -129,7 +152,7 @@ BOOL inNormal(const HDC hdc) {
 
 BOOL inOthers(const HDC hdc) {
     const COLORREF COLOR = GetPixel(hdc, points[2].point.x, points[2].point.y);
-    return  COLOR == RGB(255, 195, 0);
+    return COLOR == RGB(255, 195, 0);
 }
 
 int main(const int argc, char *argv[]) {
@@ -177,17 +200,16 @@ wait_process:
     Con_Info(ANSI_BLUE("窗口大小") ": %d" ANSI_BLUE(" X ") "%d", wndSize.cx, wndSize.cy);
 
     const int need_scale_adjust = initialize_points(argc, argv);
+    if (need_scale_adjust) {
+        calculate_points_for_resolution(wndSize, .0);
+    }
     for (int i = 0; i < point_count; ++i) {
-        printf("点[%d]: (%d, %d) - %s\n",
+        Con_Info("点[%d]: (%d, %d) - %s",
                i,
                points[i].point.x,
                points[i].point.y,
                points[i].description);
     }
-    if (need_scale_adjust) {
-        initPoints(wndSize);
-    }
-
     Con_Info("开始自动点击剧情中(当检测到进入剧情时会自动点击)...");
     Con_Info("按" ANSI_BLUE("Ctrl+p") "键暂停，按" ANSI_BLUE("Ctrl+q") "键退出。");
 
