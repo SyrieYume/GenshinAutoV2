@@ -83,3 +83,15 @@ BOOL Win_IsKeysDownEx(const int *vKeys) {
             return FALSE;
     return TRUE;
 }
+
+BOOL IsProcessAlive(const DWORD pid) {
+    const HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (!hProcess)
+        return FALSE;
+
+    DWORD exitCode = 0;
+    const BOOL success = GetExitCodeProcess(hProcess, &exitCode);
+    CloseHandle(hProcess);
+
+    return success && exitCode == STILL_ACTIVE;
+}
