@@ -1,0 +1,5 @@
+.vscode
+build
+publish
+release
+res/res.o
