@@ -7,8 +7,9 @@ BOOL Con_Init(const char* title, int cols, int lines) {
         return FALSE;
        
     // 重定向标准输入和标准输出到新的控制台
-    freopen("CONIN$", "r", stdin);
-    freopen("CONOUT$", "w", stdout);
+    FILE* newStream;
+    freopen_s(&newStream, "CONIN$", "r", stdin);
+    freopen_s(&newStream, "CONOUT$", "w", stdout);
 
     // 获取控制台窗口的句柄
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);

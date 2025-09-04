@@ -3,7 +3,7 @@
 #include <math.h>
 
 // 从程序资源中加载数据，并且写入文件
-BOOL Win_LoadResourceToFile(int resourceId, wchar_t* filepath) {   
+BOOL Win_LoadResourceToFile(WORD resourceId, wchar_t* filepath) {
     HRSRC hResource = FindResourceA(NULL, MAKEINTRESOURCEA(resourceId), MAKEINTRESOURCEA(RT_RCDATA)); 
     if(!hResource)
         return FALSE;
@@ -191,7 +191,7 @@ Image Win_CaptureWindow(HWND hwnd, int left, int top, int right, int bottom) {
     return image;
 }
 
-WINBOOL Win_SaveImage(Image image, wchar_t* filepath) {
+BOOL Win_SaveImage(Image image, wchar_t* filepath) {
     if (!image || !image->data || image->width <= 0 || image->height <= 0)
         return FALSE;
 

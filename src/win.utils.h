@@ -14,7 +14,7 @@ typedef struct {
 } *Image;
 
 // 从程序资源中加载数据，并且写入文件
-BOOL Win_LoadResourceToFile(int resourceId, wchar_t* filepath);
+BOOL Win_LoadResourceToFile(WORD resourceId, wchar_t* filepath);
 
 // 获取目标进程的 pid
 DWORD Win_GetPid(const wchar_t* wszProcessName);
@@ -35,7 +35,7 @@ BOOL Win_IsKeysDownEx(const int *vKeys);
 Image Win_CaptureWindow(HWND hwnd, int x, int y, int width, int height);
 
 // 将图片以bmp格式保存
-WINBOOL Win_SaveImage(Image image, wchar_t* filepath);
+BOOL Win_SaveImage(Image image, wchar_t* filepath);
 
 // 释放图片数据的内存
 void Win_FreeImage(Image image);

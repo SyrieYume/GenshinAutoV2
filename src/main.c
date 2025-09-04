@@ -4,7 +4,7 @@
 #include "win.utils.h"
 #include "js.api.h"
 
-int main(int argc, char **argv) {
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
     if(!Con_Init("GenshinAuto v2", 100, 30)) {
         MessageBoxW(NULL, L"初始化控制台窗口时出错", L"Error", MB_OK | MB_TOPMOST);
         return 0;
@@ -35,11 +35,20 @@ int main(int argc, char **argv) {
 
         if (JS_IsException(result)) {
             JSValue exception = JS_GetException(ctx);
-            const char* exceptionText = JS_ToCString(ctx, exception);
+            
+            const char* exceptionStr = JS_ToCString(ctx, exception);
+            Con_Error("%s", exceptionStr);
+            JS_FreeCString(ctx, exceptionStr);
 
-            Con_Error("%s", exceptionText);
+            JSValue stack = JS_GetPropertyStr(ctx, exception, "stack");
 
-            JS_FreeCString(ctx, exceptionText);
+            if (!JS_IsUndefined(stack)) {
+                const char* stackStr = JS_ToCString(ctx, stack);
+                Con_Error("Traceback:\n%s", stackStr);
+                JS_FreeCString(ctx, stackStr);
+            }
+
+            JS_FreeValue(ctx, stack);
             JS_FreeValue(ctx, exception);
             JS_FreeValue(ctx, result);
             break;
@@ -48,6 +57,7 @@ int main(int argc, char **argv) {
         JS_FreeValue(ctx, result);
     }
 
+    JS_FreeValue(ctx, jsGlobal);
     JS_FreeContext(ctx);
     JS_FreeRuntime(jsRuntime);
 
