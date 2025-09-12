@@ -38,22 +38,30 @@
 
 
 ## 自定义程序逻辑
-- 程序在第一次运行的时候，会在程序所在的目录下生成 `utils.js` 和 `script.js` 两个文件，可以用 **文本编辑器** 打开
+- 程序在第一次运行的时候，会在程序所在的目录下生成 `api.js` 和 `script.js` 两个文件，可以用 **文本编辑器** 打开
 
-- `utils.js` 中包含了 **程序提供的接口** 以及一些 **工具函数**，一般不需要修改
+- `api.js` 中包含了 **程序提供的接口** 以及一些 **工具函数**，一般不需要修改
 
 - `script.js` 是程序的逻辑代码，可以使用 **JavaScript语法** 自定义程序的逻辑
 
 ## 如何手动编译本项目
-1. 需要安装 [**CMake**](https://cmake.org) (cmake version 4.1.0)，或者根据 `CMakeLists.txt` 自己写编译指令
+1. 需要安装 [**CMake**](https://cmake.org) (cmake version 4.1.0)，或者根据 `CMakeLists.txt` 自己写编译指令  
 
-2. 需要安装 [**MinGW-w64**](https://www.mingw-w64.org) (gcc version 15.2.0)
+2. 使用的 C/C++工具链 为 [**MinGW-w64**](https://www.mingw-w64.org) (gcc version 15.2.0)
 
-3. 下载本项目源代码，在项目根目录下依次执行以下指令：
+3. 使用的构建工具为 [**Ninja**](https://github.com/ninja-build/ninja) (ninja version 1.13.1)
+
+4. Clone 本项目: 
 ```powershell
-cmake -G "MinGW Makefiles" -B build .
+git clone --recurse-submodules --depth 1 https://github.com/SyrieYume/GenshinAutoV2.git
+cd GenshinAutoV2
+```
+
+5. 在项目根目录下依次执行以下指令：
+```powershell
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -B build .
 cmake --build build
 ```
 
-4. 生成的程序在 `release` 目录下的 `GenshinAutoV2.exe`
+6. 生成的程序在 `release` 目录下的 `GenshinAutoV2.exe`
 

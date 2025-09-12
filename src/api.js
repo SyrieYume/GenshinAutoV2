@@ -1,3 +1,7 @@
+export function sleep(ms) {
+  return new Promise((resolve, reject) => setTimeout(resolve, ms));
+}
+
 export const console = {
     log: (text) => {
         const date = new Date()
@@ -37,19 +41,22 @@ export const win = {
     /**@type {function(hwnd): boolean} */
     setForegroundWindow: _setForegroundWindow,
 
-    /**@type {function(hwnd, msg, wparam, lparam): boolean} */
+    /** 发送窗口事件通用方法；
+     *  使用方法: https://learn.microsoft.com/zh-cn/windows/win32/api/winuser/nf-winuser-postmessagew
+     * @type {function(hwnd, msg, wparam, lparam): boolean} */
     postMessageW: _postMessageW,
 
     /**@type {function(hwnd, hdc): boolean} */
     releaseDC: _releaseDC,
 
     /**@type {function(): boolean} */
-    releaseCursorClip: _releaseCursorClip,
+    releaseCursorClip: () => _clipCursor(0) != 0,
     
-    captureWindow: (hwnd, left, top, right, bottom) => {
-        const imgPtr = _captureWindow(hwnd, left, top, right, bottom)
-        return imgPtr === 0n ? null : new Image(imgPtr)
-    },
+    /**@type {function(hwnd, [_left, _top, _right, _bottom]): {width:number, height:number, step:number, channels: number, data:ArrayBuffer}} */
+    captureWindow: _captureWindow,
+
+    /**@type {function(savePath, data, width, height, step): boolean} */
+    saveBitmapImage: _saveBitmapImage,
 
     rgb: (r, g, b) => r | (g << 8) | (b << 16)
 }
@@ -62,6 +69,28 @@ export const keyboard = {
     sendKeyDown: (hwnd, key) => _postMessageW(hwnd, 0x0100, BigInt(keyCodes[key]), makeKeyEventLparam(1, key, false, false, false)),
     
     sendKeyUp: (hwnd, key) => _postMessageW(hwnd, 0x0101, BigInt(keyCodes[key]), makeKeyEventLparam(1, key, false, true, true)),
+
+    /** 全局键盘事件通用方法；
+     *  使用方法: https://learn.microsoft.com/zh-cn/windows/win32/api/winuser/nf-winuser-keybd_event
+     * @type {function(keyCode, scanCode, dwFlags, BigInt)} 
+     */
+    keybdEvent: _keybdEvent,
+
+    keyDown: (key) => _keybdEvent(keyCodes[key], scanCodes[key], 0x0000, 0),
+
+    keyUp: (key) => _keybdEvent(keyCodes[key], scanCodes[key], 0x0002, 0),
+}
+
+export const mouse = {
+    sendLbuttonDown: (hwnd, x, y) => _postMessageW(hwnd, 0x0201, 0, BigInt(x | y << 16)),
+
+    sendLbuttonUp: (hwnd, x, y) => _postMessageW(hwnd, 0x0202, 1, BigInt(x | y << 16)),
+
+    /** 全局鼠标事件通用方法；
+     *  使用方法: https://learn.microsoft.com/zh-cn/windows/win32/api/winuser/nf-winuser-mouse_event
+     * @type {function(dwFlags, dx, dy, dwData, BigInt)}
+     */
+    mouseEvent: _mouseEvent
 }
 
 export const os = {
@@ -138,14 +167,6 @@ const keyCodes = {
     'Ctrl': 0x11, 'Alt': 0x12
 };
 
-
-class Image {
-    constructor(imgPtr) { this.imgPtr = imgPtr }
-    
-    save(filepath) { return _saveImage(this.imgPtr, filepath) }
-
-    free() { _freeImage(this.imgPtr) }
-}
 
 /** 十六进制颜色转rgb颜色
  * @param {string} 严格遵守格式的十六进制颜色字符串

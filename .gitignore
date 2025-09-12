@@ -1,6 +1,8 @@
 .vscode
 .cache
+.clangd
 build
 publish
 release
+tmp
 res/res.o

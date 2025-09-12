@@ -1,11 +1,12 @@
-import { console, win, keyboard, ansi, os } from "./utils.js"
+import { console, win, keyboard, ansi, os, sleep } from "./api.js"
 
+try {
 // 如果是国服，进程名为 "YuanShen.exe"，国际服为 "GenshinImpact.exe"
 const processNames = ["YuanShen.exe", "GenshinImpact.exe"]
 
 // 1920 x 1080 分辨率下的像素点坐标和颜色
 const points = [
-    { pos: [280, 35], color: win.rgb(236,229,216) },  // 隐藏对话按钮的白色部分
+    { pos: [280, 35], color: win.rgb(236, 229, 216) },  // 隐藏对话按钮的白色部分
     { pos: [271, 49], color: win.rgb(59, 67, 84) },   // 隐藏对话按钮的黑色部分
 ]
 
@@ -25,7 +26,7 @@ let pid, hwnd, wndSize, hdc
 console.print(`${ansi.orange("[Waitting]")} 正在等待原神进程 ${ansi.blue(processNames[0])} / ${ansi.blue(processNames[1])}`)
 
 while(!((pid=win.getPid(processNames[0])) || (pid=win.getPid(processNames[1]))))
-    os.sleep(200)
+    await sleep(200)
 
 console.print(ansi.cleanLine)
 
@@ -42,7 +43,7 @@ while (true) {
     if(wndSize.width > 400)
         break
 
-    os.sleep(200)
+    await sleep(200)
 }
 
 console.print(ansi.cleanLine)
@@ -65,19 +66,19 @@ while(true) {
     if(keyboard.isKeysDown('Alt', 'P')) {
         isActivate = !isActivate
         console.info(`程序${isActivate? ansi.green("继续执行"): ansi.orange("暂停")}中`)
-        os.sleep(400)
+        await sleep(400)
     }
 
     if(keyboard.isKeysDown('Alt', 'K')) {
-        const image = win.captureWindow(hwnd, 0, 0, wndSize.width, wndSize.height)
-        if(image) {
+        let image = win.captureWindow(hwnd, [0, 0, wndSize.width, wndSize.height])
+        if(image.data.byteLength > 0) {
             os.mkdir("screenshots")
             const savePath = `screenshots/${Date.now()}.bmp`
-            if(image.save(savePath))
+            if(win.saveBitmapImage(savePath, image.data, image.width, image.height, image.step))
                 console.info(`截图文件已保存至 "${ansi.blue(savePath)}"`)
-            image.free()
         } else console.error("截屏失败")
-        os.sleep(400)
+        image = null
+        await sleep(400)
     }
 
     if (isActivate) {
@@ -90,12 +91,12 @@ while(true) {
             win.setForegroundWindow(hwnd)
             // 发送点击 F 键的消息
             keyboard.sendKeyDown(hwnd, 'F')
-            os.sleep(75);
+            await sleep(75);
             keyboard.sendKeyUp(hwnd, 'F')
         }
 
         else if(afterDialog == 0) {
-            afterDialog = 16
+            afterDialog = 24
             console.info("剧情对话结束")
         }
     }
@@ -106,13 +107,9 @@ while(true) {
         win.releaseCursorClip()
     }
 
-    os.sleep(125)
+    await sleep(125)
 }
 
-win.releaseDC(hwnd, hdc)
-
-
-
-
-
-
+} catch(e) {
+    console.error(e.toString() + "\nTraceback:\n" + e.stack.toString())
+}

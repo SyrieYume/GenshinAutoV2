@@ -7,12 +7,12 @@
 
 CREATEPROCESS_MANIFEST_RESOURCE_ID MANIFEST "manifest.xml"
 
-101 RCDATA "../src/utils.js"
+101 RCDATA "../src/api.js"
 102 RCDATA "../src/script.js"
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     2,3,0,0
-PRODUCTVERSION  2,3,0,0
+FILEVERSION     2,4,0,0
+PRODUCTVERSION  2,4,0,0
 FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
 FILEFLAGS       0
 FILEOS          VOS_NT_WINDOWS32
@@ -24,11 +24,11 @@ BEGIN
         BLOCK "080404b0"
         BEGIN
             VALUE "CompanyName", "SyrieYume"
-            VALUE "FileVersion", "2.3.0.0"
+            VALUE "FileVersion", "2.4.0.0"
             VALUE "InternalName", "GenshinAutoV2"
             VALUE "OriginalFilename", "GenshinAutoV2.exe"
             VALUE "ProductName", "GenshinAutoV2"
-            VALUE "ProductVersion", "2.3.0.0"
+            VALUE "ProductVersion", "2.4.0.0"
         END
     END
 
